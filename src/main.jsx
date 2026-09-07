@@ -22,5 +22,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         />
       </AppProvider>
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

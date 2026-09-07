@@ -355,9 +355,13 @@ export function AppProvider({ children }) {
       throw new Error("No active user session.");
     }
 
-    const category = categories.find((item) => item.id === data.categoryId);
+    // FIX: Check if categories exists before using .find()
+    const category =
+      categories && categories.length > 0
+        ? categories.find((item) => item.id === data.categoryId)
+        : null;
 
-    if (user.demoMode) {
+    if (user.demoMode || !firebaseConfigured) {
       const expense = {
         id: makeId("expense"),
         userId: user.uid,
@@ -370,27 +374,38 @@ export function AppProvider({ children }) {
         updatedAt: Date.now(),
       };
 
-      updateLocal((current) => ({
-        ...current,
-        expenses: [expense, ...current.expenses],
-      }));
+      // Update state directly
+      setExpenses((prev) => [expense, ...prev]);
+
+      // Save to localStorage
+      const currentData = loadLocalData();
+      const updatedData = {
+        ...currentData,
+        expenses: [expense, ...(currentData.expenses || [])],
+      };
+      saveLocalData(updatedData);
 
       toast.success("Expense added successfully! (Local demo mode)");
       return;
     }
 
-    await addDoc(collection(db, "users", user.uid, "expenses"), {
-      userId: user.uid,
-      name: data.name.trim(),
-      amount: Number(data.amount),
-      categoryId: data.categoryId,
-      categoryName: category?.name || "Uncategorized",
-      date: data.date,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-
-    toast.success("Expense added successfully!");
+    // Firebase mode
+    try {
+      await addDoc(collection(db, "users", user.uid, "expenses"), {
+        userId: user.uid,
+        name: data.name.trim(),
+        amount: Number(data.amount),
+        categoryId: data.categoryId,
+        categoryName: category?.name || "Uncategorized",
+        date: data.date,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      toast.success("Expense added successfully!");
+    } catch (error) {
+      console.error("Error adding expense:", error);
+      toast.error("Failed to add expense. Please try again.");
+    }
   };
 
   const updateExpense = async (id, data) => {
@@ -578,9 +593,13 @@ export function AppProvider({ children }) {
       throw new Error("No active user session.");
     }
 
-    const source = incomeSources.find((item) => item.id === data.sourceId);
+    // FIX: Check if incomeSources exists before using .find()
+    const source =
+      incomeSources && incomeSources.length > 0
+        ? incomeSources.find((item) => item.id === data.sourceId)
+        : null;
 
-    if (user.demoMode) {
+    if (user.demoMode || !firebaseConfigured) {
       const income = {
         id: makeId("income"),
         userId: user.uid,
@@ -596,30 +615,41 @@ export function AppProvider({ children }) {
         updatedAt: Date.now(),
       };
 
-      updateLocal((current) => ({
-        ...current,
-        income: [income, ...(current.income || [])],
-      }));
+      // Update state directly
+      setIncomeEntries((prev) => [income, ...prev]);
+
+      // Update localStorage
+      const currentData = loadLocalData();
+      const updatedData = {
+        ...currentData,
+        income: [income, ...(currentData.income || [])],
+      };
+      saveLocalData(updatedData);
 
       toast.success("Income added successfully! (Local demo mode)");
       return;
     }
 
-    await addDoc(collection(db, "users", user.uid, "income"), {
-      userId: user.uid,
-      sourceId: data.sourceId,
-      sourceName: source?.name || "Unknown",
-      sourceColor: source?.color || "#6366f1",
-      sourceIcon: source?.icon || "💰",
-      amount: Number(data.amount),
-      date: data.date,
-      description: data.description?.trim() || "",
-      frequency: data.frequency || INCOME_FREQUENCIES.ONE_TIME,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-
-    toast.success("Income added successfully!");
+    // Firebase mode
+    try {
+      await addDoc(collection(db, "users", user.uid, "income"), {
+        userId: user.uid,
+        sourceId: data.sourceId,
+        sourceName: source?.name || "Unknown",
+        sourceColor: source?.color || "#6366f1",
+        sourceIcon: source?.icon || "💰",
+        amount: Number(data.amount),
+        date: data.date,
+        description: data.description?.trim() || "",
+        frequency: data.frequency || INCOME_FREQUENCIES.ONE_TIME,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      toast.success("Income added successfully!");
+    } catch (error) {
+      console.error("Error adding income:", error);
+      toast.error("Failed to add income. Please try again.");
+    }
   };
 
   const updateIncome = async (id, data) => {
